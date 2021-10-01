@@ -84,7 +84,7 @@ mod tests {
     }
 
     #[test]
-    fn test_game_is_not_over_after_two_consecutive_passes(){
+    fn test_game_is_over_after_two_consecutive_passes(){
         let mut game_state = GameState::new(19);
         game_state = game_state.apply_move(Move::Pass);
         game_state = game_state.apply_move(Move::Pass);
