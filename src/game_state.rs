@@ -1,10 +1,11 @@
 use crate::{Board, Player, Move};
+use crate::zobrist::ZobristHash;
 
 #[derive(Debug, Clone, PartialEq)]
 struct GameState {
     board: Board,
     next_player: Player,
-    previous_state: Box<Option<GameState>>,
+    previous_states: Vec<(Player, ZobristHash)>,
     last_move: Option<Move>,
 }
 
@@ -13,7 +14,7 @@ impl GameState {
         Self {
             board: Board::new(board_size),
             next_player: Player::Black,
-            previous_state: Box::new(None),
+            previous_states: Vec::new(),
             last_move: None
         }
     }
@@ -28,10 +29,12 @@ impl GameState {
             Move::Resign => {}
         }
 
+        let mut previous_states = self.previous_states.clone();
+        previous_states.push((self.next_player, next_board.hash()));
         Self {
             board: next_board,
             next_player: self.next_player.other(),
-            previous_state: Box::new(Some(self.clone())),
+            previous_states,
             last_move: Some(the_move)
         }
     }
@@ -43,12 +46,14 @@ impl GameState {
                 Move::Play(_) => false,
                 // Over if two consecutive passes
                 Move::Pass => self
-                    .previous_state
-                    .as_ref().as_ref()
-                    .map(|state| state
-                        .last_move
-                        .map(|previous_move| previous_move == Move::Pass)
-                        .unwrap_or(false))
+                    .previous_states
+                    .windows(2)
+                    .last()
+                    .map(|two_last_states| {
+                        // Zobrist hashes of two last states are the same
+                        // => Both have passed
+                        two_last_states[0].1 == two_last_states[1].1
+                    })
                     .unwrap_or(false),
                 Move::Resign => true
             }
@@ -64,5 +69,25 @@ impl GameState {
             }
             _ => false
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_game_is_not_over_after_one_pass(){
+        let mut game_state = GameState::new(19);
+        game_state = game_state.apply_move(Move::Pass);
+        assert!(!game_state.is_over());
+    }
+
+    #[test]
+    fn test_game_is_not_over_after_two_consecutive_passes(){
+        let mut game_state = GameState::new(19);
+        game_state = game_state.apply_move(Move::Pass);
+        game_state = game_state.apply_move(Move::Pass);
+        assert!(game_state.is_over());
     }
 }

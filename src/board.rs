@@ -106,7 +106,7 @@ impl Board {
         self.grid[(point.row - 1) * self.cols + (point.col - 1)] = value;
     }
 
-    fn hash(&self) -> ZobristHash {
+    pub fn hash(&self) -> ZobristHash {
         self.hash
     }
 
