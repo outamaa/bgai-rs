@@ -2,6 +2,7 @@ mod board;
 mod types;
 mod game_state;
 mod zobrist;
+mod agent;
 
 use anyhow::{bail, Result};
 use std::collections::{HashMap, HashSet};
