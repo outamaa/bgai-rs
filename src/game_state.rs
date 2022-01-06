@@ -3,8 +3,8 @@ use crate::zobrist::ZobristHash;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GameState {
-    board: Board,
-    next_player: Player,
+    pub board: Board,
+    pub next_player: Player,
     /// Vec<(next player, Zobrist hash of current state)>
     previous_states: Vec<(Player, ZobristHash)>,
     last_move: Option<Move>,

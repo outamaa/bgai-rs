@@ -9,8 +9,8 @@ use crate::zobrist::{ZobristHasher, ZobristHash};
 
 #[derive(Clone, PartialEq)]
 pub struct Board {
-    rows: usize,
-    cols: usize,
+    pub rows: usize,
+    pub cols: usize,
     grid: Vec<Option<Player>>,
     hasher: Rc<ZobristHasher>,
     hash: ZobristHash,
