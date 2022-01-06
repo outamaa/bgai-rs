@@ -35,6 +35,16 @@ impl Point {
             Self::new(self.row, self.col + 1),
         ]
     }
+
+    pub(crate) fn diagonals(&self) -> Vec<Point> {
+        vec![
+            Self::new(self.row - 1, self.col - 1),
+            Self::new(self.row + 1, self.col - 1),
+            Self::new(self.row - 1, self.col + 1),
+            Self::new(self.row + 1, self.col + 1),
+        ]
+
+    }
 }
 
 

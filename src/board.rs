@@ -1,5 +1,4 @@
 use anyhow::{bail, Result};
-use std::iter::FromIterator;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::fmt;
@@ -62,10 +61,10 @@ impl Board {
     fn group_without_liberties(&self, point: &Point, mut captured: Vec<Point>) -> Vec<Point> {
         let color = self.get(point).unwrap(); // Should be called only on points with a stone
         let mut unexplored = vec![*point];
-        let mut potentially_captured = Vec::new();
+        let mut explored = Vec::new();
 
         while let Some(point) = unexplored.pop() {
-            potentially_captured.push(point);
+            explored.push(point);
             for neighbor in point.neighbors().iter().filter(|p| self.is_on_grid(p)) {
                 match self.get(&neighbor) {
                     None => {
@@ -76,7 +75,7 @@ impl Board {
                         // Ignore opponent's stones and stones that are already added to group
                         if neighbor_color == color
                             && !captured.contains(&point)
-                            && !potentially_captured.contains(&point) {
+                            && !explored.contains(&point) {
                             unexplored.push(*neighbor);
                         }
                     }
@@ -84,13 +83,47 @@ impl Board {
             }
         }
 
-        captured.append(&mut potentially_captured);
+        captured.append(&mut explored);
         captured
     }
 
     pub fn is_alive(&self, point: &Point) -> bool {
         assert!(self.get(point).is_some());
         self.group_without_liberties(point, Vec::new()).len() == 0
+    }
+
+    pub fn is_eye(&self, point: &Point, color: Player) -> bool {
+        match self.get(point) {
+            None => {
+                for neighbor in point.neighbors() {
+                    if self.is_on_grid(&neighbor) {
+                        if self.get(&neighbor) != Some(color) {
+                            return false;
+                        }
+                    }
+                }
+                let mut friendly_corners = 0;
+                let mut off_board_corners = 0;
+                for corner in point.diagonals() {
+                    if self.is_on_grid(&corner) {
+                        let corner_color = self.get(&corner);
+                        if corner_color == Some(color) {
+                            friendly_corners += 1;
+                        }
+                    } else {
+                        off_board_corners += 1;
+                    }
+                }
+                println!("Friendly: {}, Off board: {}", friendly_corners, off_board_corners);
+                if off_board_corners > 0 {
+                    off_board_corners + friendly_corners == 4
+                } else {
+                    friendly_corners >= 3
+                }
+            }
+            // Point can't be eye if there's a stone
+            Some(_) => false
+        }
     }
 
     fn is_on_grid(&self, point: &Point) -> bool {
@@ -265,6 +298,69 @@ mod tests {
         board.remove_stone(&Point::new(13, 1));
         
         assert_eq!(original_hash, board.hash(), "Removing stone reverts the hash");
+    }
+
+    #[test]
+    fn test_is_eye_without_off_board_corners() {
+        let board = r#".oo
+                             o.o
+                             .o."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(!board.is_eye(&Point::new(1, 2), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+
+        let board = r#"ooo
+                             o.o
+                             .o."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(!board.is_eye(&Point::new(2, 2), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+
+        let board = r#"ooo
+                             o.o
+                             .oo"#;
+        let board = Board::from_str(board).unwrap();
+        assert!(board.is_eye(&Point::new(2, 2), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+
+        let board = r#"ooo
+                             o.o
+                             ooo"#;
+        let board = Board::from_str(board).unwrap();
+        assert!(board.is_eye(&Point::new(2, 2), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+    }
+
+    #[test]
+    fn test_is_eye_with_off_board_corners() {
+        let board = r#".x.
+                             ..x
+                             ..."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(!board.is_eye(&Point::new(1, 3), Player::Black));
+        assert!(!board.is_eye(&Point::new(1, 3), Player::White));
+
+        let board = r#".x.
+                             .xx
+                             ..."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(board.is_eye(&Point::new(1, 3), Player::Black));
+        assert!(!board.is_eye(&Point::new(1, 3), Player::White));
+
+        let board = r#"xx.
+                             .x.
+                             x.."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(!board.is_eye(&Point::new(2, 1), Player::Black));
+        assert!(!board.is_eye(&Point::new(2, 1), Player::White));
+
+        let board = r#"xx.
+                             .x.
+                             xx."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(board.is_eye(&Point::new(2, 1), Player::Black));
+        assert!(!board.is_eye(&Point::new(2, 1), Player::White));
     }
 }
 
