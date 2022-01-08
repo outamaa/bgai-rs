@@ -51,7 +51,7 @@ impl Board {
 
     fn remove_stone(&mut self, captured_point: &Point) {
         // Assume this is only called for point with stone
-        let player = self.get(captured_point).unwrap();
+        let player = self.get(captured_point).expect(&format!("Failed to remove stone at point {:?}", captured_point));
         self.apply_hash_for_play(player, captured_point);
         self.set(captured_point, None);
     }
@@ -64,7 +64,9 @@ impl Board {
         let mut explored = Vec::new();
 
         while let Some(point) = unexplored.pop() {
-            explored.push(point);
+            if !captured.contains(&point) {
+                explored.push(point);
+            }
             for neighbor in point.neighbors().iter().filter(|p| self.is_on_grid(p)) {
                 match self.get(&neighbor) {
                     None => {
@@ -74,8 +76,9 @@ impl Board {
                     Some(neighbor_color) => {
                         // Ignore opponent's stones and stones that are already added to group
                         if neighbor_color == color
-                            && !captured.contains(&point)
-                            && !explored.contains(&point) {
+                            && !captured.contains(&neighbor)
+                            && !explored.contains(&neighbor)
+                            && !unexplored.contains(&neighbor) {
                             unexplored.push(*neighbor);
                         }
                     }
@@ -114,7 +117,6 @@ impl Board {
                         off_board_corners += 1;
                     }
                 }
-                println!("Friendly: {}, Off board: {}", friendly_corners, off_board_corners);
                 if off_board_corners > 0 {
                     off_board_corners + friendly_corners == 4
                 } else {
@@ -361,6 +363,14 @@ mod tests {
         let board = Board::from_str(board).unwrap();
         assert!(board.is_eye(&Point::new(2, 1), Player::Black));
         assert!(!board.is_eye(&Point::new(2, 1), Player::White));
+
+        let board = r#"xx.
+                             .x.
+                             xo."#;
+        let board = Board::from_str(board).unwrap();
+        assert!(!board.is_eye(&Point::new(2, 1), Player::Black));
+        assert!(!board.is_eye(&Point::new(2, 1), Player::White));
+
     }
 }
 

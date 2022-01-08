@@ -10,6 +10,14 @@ pub struct RandomBot {
     rng: ThreadRng,
 }
 
+impl RandomBot {
+    pub fn new() -> Self {
+        Self {
+            rng: rand::thread_rng(),
+        }
+    }
+}
+
 impl Agent for RandomBot {
     fn select_move(&mut self, game_state: &GameState) -> Move {
         // Generate valid candidates

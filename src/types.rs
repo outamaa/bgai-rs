@@ -1,6 +1,6 @@
 /// Common types needed everywhere
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Player {
     Black,
     White,
