@@ -154,7 +154,11 @@ impl FromStr for Board {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        let lines: Vec<&str> = s.lines().collect();
+        let lines: Vec<&str> = s
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(|line| line.trim())
+            .collect();
         let rows = lines.len();
         let cols = lines[0].len();
         assert_eq!(rows, cols);
@@ -162,7 +166,7 @@ impl FromStr for Board {
         let mut board = Self::new(rows);
 
         for (row_idx, row) in lines.iter().enumerate() {
-            for (col_idx, c) in row.trim().chars().filter(|c| !c.is_whitespace()).enumerate() {
+            for (col_idx, c) in row.chars().filter(|c| !c.is_whitespace()).enumerate() {
                 let point = Point::new(row_idx + 1, col_idx + 1);
                 let contents = match c {
                     'o' => Some(Player::White),
@@ -184,14 +188,14 @@ impl FromStr for Board {
 
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "  ");
+        write!(f, "  ")?;
         for i in 1..=self.cols {
-            write!(f, " {:2}", i);
+            write!(f, " {:2}", i)?;
         }
-        write!(f, "\n");
+        write!(f, "\n")?;
 
         for row in 1..=self.rows {
-            write!(f, "{:2} ", row);
+            write!(f, "{:2} ", row)?;
             for col in 1..=self.cols {
                 let contents = self.get(&Point::new(row, col));
                 let c = match contents {
@@ -201,9 +205,9 @@ impl fmt::Debug for Board {
                         Player::White => 'o'
                     }
                 };
-                write!(f, " {} ", c);
+                write!(f, " {} ", c)?;
             }
-            write!(f, "\n");
+            write!(f, "\n")?;
         }
         Ok(())
     }
@@ -284,12 +288,12 @@ mod tests {
         let original_hash = board.hash();
 
         // Add multiple stones
-        board.place_stone(Player::White, &Point::new(1, 1));
-        board.place_stone(Player::White, &Point::new(2, 1));
-        board.place_stone(Player::White, &Point::new(3, 1));
-        board.place_stone(Player::Black, &Point::new(11, 1));
-        board.place_stone(Player::Black, &Point::new(12, 1));
-        board.place_stone(Player::Black, &Point::new(13, 1));
+        let _ = board.place_stone(Player::White, &Point::new(1, 1));
+        let _ = board.place_stone(Player::White, &Point::new(2, 1));
+        let _ = board.place_stone(Player::White, &Point::new(3, 1));
+        let _ = board.place_stone(Player::Black, &Point::new(11, 1));
+        let _ = board.place_stone(Player::Black, &Point::new(12, 1));
+        let _ = board.place_stone(Player::Black, &Point::new(13, 1));
 
         // Remove in shuffled order
         board.remove_stone(&Point::new(2, 1));

@@ -181,7 +181,8 @@ mod tests {
 
     #[test]
     fn test_valid_moves() {
-        let board = r#".o.o.x.x.
+        let board = r#"
+        .o.o.x.x.
         x.x.o.o.x
         .x.o.o.ox
         x.x.x.xx.
@@ -196,7 +197,8 @@ mod tests {
 
         assert!(game.is_valid_move(Move::Play(Point::new(7, 1))));
 
-        let board = r#".xxxoo.xx
+        let board = r#"
+        .xxxoo.xx
         xxxxxxxx.
         xxxxxxxxx
         .x.xx.oxx
