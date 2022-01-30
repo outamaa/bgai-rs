@@ -137,6 +137,14 @@ impl Board {
         self.grid[(point.row - 1) * self.cols + (point.col - 1)]
     }
 
+    pub fn points(&self) -> BoardPoints {
+        BoardPoints::new(self)
+    }
+
+    pub fn empty_points(&self) -> EmptyBoardPoints {
+        EmptyBoardPoints::new(self)
+    }
+
     fn set(&mut self, point: &Point, value: Option<Player>) {
         self.grid[(point.row - 1) * self.cols + (point.col - 1)] = value;
     }
@@ -149,6 +157,70 @@ impl Board {
         self.hash = self.hasher.hash_move(self.hash, player, point);
     }
 }
+
+pub struct BoardPoints<'a> {
+    board: &'a Board,
+    row: usize,
+    col: usize,
+}
+
+impl<'a> BoardPoints<'a> {
+    fn new(board: &'a Board) -> Self {
+        Self {
+            board,
+            row: 1,
+            col: 1
+        }
+    }
+}
+
+impl<'a> Iterator for BoardPoints<'a> {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.row <= self.board.rows {
+            let p = Point::new(self.row, self.col);
+            self.col += 1;
+            if self.col > self.board.cols {
+                self.col = 1;
+                self.row += 1;
+            }
+            Some(p)
+        } else {
+            None
+        }
+    }
+}
+
+pub struct EmptyBoardPoints<'a> {
+    board: &'a Board,
+    points: BoardPoints<'a>,
+}
+
+impl<'a> EmptyBoardPoints<'a> {
+    fn new(board: &'a Board) -> Self {
+        Self {
+            board,
+            points: BoardPoints::new(board),
+        }
+    }
+}
+
+impl<'a> Iterator for EmptyBoardPoints<'a> {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Return first empty point
+        while let Some(p) = self.points.next() {
+            if self.board.get(&p).is_none() {
+                return Some(p);
+            }
+        }
+        // Or return None
+        None
+    }
+}
+
 
 impl FromStr for Board {
     type Err = anyhow::Error;
@@ -235,6 +307,7 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
+    use std::io::empty;
     use crate::{Board, Point, Player};
     use std::str::FromStr;
 
@@ -375,6 +448,19 @@ mod tests {
         assert!(!board.is_eye(&Point::new(2, 1), Player::Black));
         assert!(!board.is_eye(&Point::new(2, 1), Player::White));
 
+    }
+
+    #[test]
+    fn test_empty_points_iterates_over_empty_board_points() {
+        let board = r#"
+        xoo
+        o.o
+        xo."#;
+        let board = Board::from_str(board).unwrap();
+        let mut empty_points = board.empty_points();
+        assert_eq!(empty_points.next().unwrap(), Point::new(2, 2));
+        assert_eq!(empty_points.next().unwrap(), Point::new(3, 3));
+        assert!(empty_points.next().is_none());
     }
 }
 

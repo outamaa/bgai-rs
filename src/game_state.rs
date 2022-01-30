@@ -1,4 +1,4 @@
-use crate::{Board, Player, Move};
+use crate::{Board, Player, Move, EmptyBoardPoints};
 use crate::zobrist::ZobristHash;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -101,6 +101,53 @@ impl GameState {
             _ => true
         }
     }
+
+    /// Return an iterator of valid moves for `next_player`
+    pub fn valid_moves(&self) -> ValidMoves {
+        ValidMoves::new(self)
+    }
+}
+
+pub struct ValidMoves<'a> {
+    game: &'a GameState,
+    points: EmptyBoardPoints<'a>,
+    pass_returned: bool,
+    resign_returned: bool,
+}
+
+impl<'a> ValidMoves<'a> {
+    fn new(game: &'a GameState) -> Self {
+        Self {
+            game,
+            points: game.board.empty_points(),
+            pass_returned: false,
+            resign_returned: false,
+        }
+    }
+}
+
+impl<'a> Iterator for ValidMoves<'a> {
+    type Item = Move;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Return first valid play
+        while let Some(p) = self.points.next() {
+            let the_move = Move::Play(p);
+            if self.game.is_valid_move(the_move) {
+                return Some(the_move);
+            }
+        }
+        // All plays handled, pass and resign left
+        if !self.pass_returned && !self.game.is_over() {
+            self.pass_returned = true;
+            Some(Move::Pass)
+        } else if !self.resign_returned {
+            self.resign_returned = true;
+            Some(Move::Resign)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -180,7 +227,7 @@ mod tests {
 
 
     #[test]
-    fn test_valid_moves() {
+    fn test_is_valid_move() {
         let board = r#"
         .o.o.x.x.
         x.x.o.o.x
@@ -212,6 +259,30 @@ mod tests {
         let game = GameState::from_board(board, Player::Black);
 
         assert!(game.is_valid_move(Move::Play(Point::new(1, 7))));
+    }
 
+    #[test]
+    fn test_valid_moves() {
+        let board = r#"
+        ooo
+        o.o
+        oo."#;
+        let board = Board::from_str(board).unwrap();
+
+        let game = GameState::from_board(board.clone(), Player::Black);
+        let valid_moves: Vec<Move> = game.valid_moves().collect();
+
+        assert_eq!(valid_moves.len(), 2);
+        assert!(valid_moves.contains(&Move::Resign));
+        assert!(valid_moves.contains(&Move::Pass));
+
+        let game = GameState::from_board(board.clone(), Player::White);
+        let valid_moves: Vec<Move> = game.valid_moves().collect();
+
+        assert_eq!(valid_moves.len(), 4);
+        assert!(valid_moves.contains(&Move::Resign));
+        assert!(valid_moves.contains(&Move::Pass));
+        assert!(valid_moves.contains(&Move::Play(Point::new(2, 2))));
+        assert!(valid_moves.contains(&Move::Play(Point::new(3, 3))));
     }
 }
