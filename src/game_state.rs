@@ -1,52 +1,61 @@
-use crate::{Board, Player, Move, EmptyBoardPoints};
+use crate::{Board, Color, Move, EmptyBoardPoints};
+use crate::player::Player;
 use crate::zobrist::ZobristHash;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GameState {
     pub board: Board,
     pub next_player: Player,
+    pub previous_player: Player,
+    // bit of a code smell here, but ...
     /// Vec<(next player, Zobrist hash of current state)>
-    previous_states: Vec<(Player, ZobristHash)>,
+    previous_states: Vec<(Color, ZobristHash)>,
     moves: Vec<Move>,
 }
 
 impl GameState {
     pub fn new(board_size: usize) -> Self {
-        Self {
-            board: Board::new(board_size),
-            next_player: Player::Black,
-            previous_states: Vec::new(),
-            moves: Vec::new(),
-        }
+        Self::from_board(Board::new(board_size), Player::black())
     }
 
     // For testing
     fn from_board(board: Board, next_player: Player) -> Self {
+        let other_color = next_player.color;
         Self {
             board,
             next_player,
-            previous_states: vec![],
+            previous_player: Player::new(other_color),
+            previous_states: Vec::new(),
             moves: Vec::new(),
         }
     }
 
     pub fn apply_move(&self, the_move: Move) -> Self {
         let mut next_board = self.board.clone();
+        let mut captured_stones = 0;
         match the_move {
             Move::Play(point) => {
-                next_board.place_stone(self.next_player, &point);
+                captured_stones = next_board.place_stone(self.next_player.color, &point).expect("Illegal play");
+
             }
             Move::Pass => {}
             Move::Resign => {}
         }
 
         let mut previous_states = self.previous_states.clone();
-        previous_states.push((self.next_player.other(), next_board.hash()));
+        previous_states.push((self.previous_player.color, next_board.hash()));
         let mut moves = self.moves.clone();
         moves.push(the_move);
+
+        // Clone players for next game state
+        let next_player = self.previous_player.clone();
+        let mut previous_player = self.next_player.clone();
+        previous_player.captured += captured_stones;
+
         Self {
             board: next_board,
-            next_player: self.next_player.other(),
+            next_player,
+            previous_player,
             previous_states,
             moves
         }
@@ -67,23 +76,23 @@ impl GameState {
         }
     }
 
-    pub fn is_move_self_capture(&self, player: Player, the_move: Move) -> bool {
+    pub fn is_move_self_capture(&self, color: Color, the_move: Move) -> bool {
         match the_move {
             Move::Play(point) => {
                 let mut next_board = self.board.clone();
-                next_board.place_stone(player, &point);
+                next_board.place_stone(color, &point).unwrap();
                 !next_board.is_alive(&point)
             }
             _ => false
         }
     }
 
-    pub fn does_move_violate_ko(&self, player: Player, the_move: Move) -> bool {
+    pub fn does_move_violate_ko(&self, color: Color, the_move: Move) -> bool {
         match the_move {
             Move::Play(point) => {
                 let mut next_board = self.board.clone();
-                next_board.place_stone(player, &point);
-                let next_situation = (player.other(), next_board.hash());
+                next_board.place_stone(color, &point).expect("Illegal placement");
+                let next_situation = (color.other(), next_board.hash());
                 self.previous_states.contains(&next_situation)
             }
             _ => false
@@ -95,8 +104,8 @@ impl GameState {
             Move::Play(point) => {
                 !self.is_over() &&
                     self.board.get(&point).is_none() &&
-                    !self.is_move_self_capture(self.next_player, the_move) &&
-                    !self.does_move_violate_ko(self.next_player, the_move)
+                    !self.is_move_self_capture(self.next_player.color, the_move) &&
+                    !self.does_move_violate_ko(self.next_player.color, the_move)
             }
             _ => true
         }
@@ -184,8 +193,8 @@ mod tests {
         game_state = game_state.apply_move(Move::Play(Point::new(10,10))); // Black 10,10
         game_state = game_state.apply_move(Move::Play(Point::new(2, 4)));  // White 2,4
         game_state = game_state.apply_move(Move::Play(Point::new(2, 3)));  // Black 2,3
-        assert!(game_state.does_move_violate_ko(Player::White, Move::Play(Point::new(2, 2))));
-        assert!(!game_state.does_move_violate_ko(Player::White, Move::Play(Point::new(14, 14))));
+        assert!(game_state.does_move_violate_ko(Color::White, Move::Play(Point::new(2, 2))));
+        assert!(!game_state.does_move_violate_ko(Color::White, Move::Play(Point::new(14, 14))));
     }
 
     #[test]
@@ -195,9 +204,9 @@ mod tests {
                        .o."#;
         let board = Board::from_str(board).unwrap();
 
-        let game = GameState::from_board(board, Player::Black);
+        let game = GameState::from_board(board, Player::black());
 
-        assert!(game.is_move_self_capture(Player::Black, Move::Play(Point::new(2, 2))));
+        assert!(game.is_move_self_capture(Color::Black, Move::Play(Point::new(2, 2))));
     }
 
 
@@ -208,7 +217,7 @@ mod tests {
                        .o."#;
         let board = Board::from_str(board).unwrap();
 
-        let game = GameState::from_board(board, Player::Black);
+        let game = GameState::from_board(board, Player::black());
 
         assert!(!game.is_valid_move(Move::Play(Point::new(2, 2))));
     }
@@ -220,7 +229,7 @@ mod tests {
                        ooo"#;
         let board = Board::from_str(board).unwrap();
 
-        let game = GameState::from_board(board, Player::Black);
+        let game = GameState::from_board(board, Player::black());
 
         assert!(game.is_valid_move(Move::Play(Point::new(2, 2))));
     }
@@ -240,7 +249,7 @@ mod tests {
         .x.o.oxox"#;
         let board = Board::from_str(board).unwrap();
 
-        let game = GameState::from_board(board, Player::White);
+        let game = GameState::from_board(board, Player::white());
 
         assert!(game.is_valid_move(Move::Play(Point::new(7, 1))));
 
@@ -256,7 +265,7 @@ mod tests {
         xx.xoooo."#;
         let board = Board::from_str(board).unwrap();
 
-        let game = GameState::from_board(board, Player::Black);
+        let game = GameState::from_board(board, Player::black());
 
         assert!(game.is_valid_move(Move::Play(Point::new(1, 7))));
     }
@@ -269,14 +278,14 @@ mod tests {
         oo."#;
         let board = Board::from_str(board).unwrap();
 
-        let game = GameState::from_board(board.clone(), Player::Black);
+        let game = GameState::from_board(board.clone(), Player::black());
         let valid_moves: Vec<Move> = game.valid_moves().collect();
 
         assert_eq!(valid_moves.len(), 2);
         assert!(valid_moves.contains(&Move::Resign));
         assert!(valid_moves.contains(&Move::Pass));
 
-        let game = GameState::from_board(board.clone(), Player::White);
+        let game = GameState::from_board(board.clone(), Player::white());
         let valid_moves: Vec<Move> = game.valid_moves().collect();
 
         assert_eq!(valid_moves.len(), 4);

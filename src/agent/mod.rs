@@ -1,4 +1,6 @@
-use crate::{Move, game_state::GameState, Point, Player};
+mod minimax;
+
+use crate::{Move, game_state::GameState, Point};
 use rand::rngs::ThreadRng;
 use rand::Rng;
 
@@ -26,7 +28,7 @@ impl Agent for RandomBot {
             for col in 1..=game_state.board.cols {
                 let candidate = Point::new(row, col);
                 if game_state.is_valid_move(Move::Play(candidate)) &&
-                    !game_state.board.is_eye(&candidate, game_state.next_player) {
+                    !game_state.board.is_eye(&candidate, game_state.next_player.color) {
                     candidates.push(candidate);
                 }
             }

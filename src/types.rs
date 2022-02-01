@@ -1,13 +1,13 @@
 /// Common types needed everywhere
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Player {
+pub enum Color {
     Black,
     White,
 }
 
-impl Player {
-    pub fn other(&self) -> Player {
+impl Color {
+    pub fn other(&self) -> Color {
         if *self == Self::Black {
             Self::White
         } else {

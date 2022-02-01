@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use crate::{Player, Point};
+use crate::{Color, Point};
 use std::fmt;
 use std::fmt::Formatter;
 
@@ -32,10 +32,10 @@ impl ZobristHasher {
         0
     }
 
-    pub fn hash_move(&self, hash: ZobristHash, player: Player, point: &Point) -> ZobristHash {
+    pub fn hash_move(&self, hash: ZobristHash, player: Color, point: &Point) -> ZobristHash {
         let offset = match player {
-            Player::Black => 0,
-            Player::White => 1,
+            Color::Black => 0,
+            Color::White => 1,
         };
         let index = (point.row - 1) * self.board_size + (point.col - 1) + offset;
 

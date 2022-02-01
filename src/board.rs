@@ -11,7 +11,7 @@ use crate::zobrist::{ZobristHasher, ZobristHash};
 pub struct Board {
     pub rows: usize,
     pub cols: usize,
-    grid: Vec<Option<Player>>,
+    grid: Vec<Option<Color>>,
     hasher: Rc<ZobristHasher>,
     hash: ZobristHash,
 }
@@ -27,7 +27,7 @@ impl Board {
         }
     }
 
-    pub fn place_stone(&mut self, player: Player, point: &Point) -> Result<usize> {
+    pub fn place_stone(&mut self, player: Color, point: &Point) -> Result<usize> {
         if self.get(point).is_some() {
             bail!("{:?} is not empty", point);
         }
@@ -95,7 +95,7 @@ impl Board {
         self.group_without_liberties(point, Vec::new()).len() == 0
     }
 
-    pub fn is_eye(&self, point: &Point, color: Player) -> bool {
+    pub fn is_eye(&self, point: &Point, color: Color) -> bool {
         match self.get(point) {
             None => {
                 for neighbor in point.neighbors() {
@@ -132,7 +132,7 @@ impl Board {
         (1..=self.rows).contains(&point.row) && (1..=self.cols).contains(&point.col)
     }
 
-    pub fn get(&self, point: &Point) -> Option<Player> {
+    pub fn get(&self, point: &Point) -> Option<Color> {
         assert!(self.is_on_grid(point));
         self.grid[(point.row - 1) * self.cols + (point.col - 1)]
     }
@@ -145,7 +145,7 @@ impl Board {
         EmptyBoardPoints::new(self)
     }
 
-    fn set(&mut self, point: &Point, value: Option<Player>) {
+    fn set(&mut self, point: &Point, value: Option<Color>) {
         self.grid[(point.row - 1) * self.cols + (point.col - 1)] = value;
     }
 
@@ -153,7 +153,7 @@ impl Board {
         self.hash
     }
 
-    fn apply_hash_for_play(&mut self, player: Player, point: &Point) {
+    fn apply_hash_for_play(&mut self, player: Color, point: &Point) {
         self.hash = self.hasher.hash_move(self.hash, player, point);
     }
 }
@@ -241,8 +241,8 @@ impl FromStr for Board {
             for (col_idx, c) in row.chars().filter(|c| !c.is_whitespace()).enumerate() {
                 let point = Point::new(row_idx + 1, col_idx + 1);
                 let contents = match c {
-                    'o' => Some(Player::White),
-                    'x' => Some(Player::Black),
+                    'o' => Some(Color::White),
+                    'x' => Some(Color::Black),
                     '.' => None,
                     c => bail!("Invalid character: {}", c)
                 };
@@ -273,8 +273,8 @@ impl fmt::Debug for Board {
                 let c = match contents {
                     None => '.',
                     Some(color) => match color {
-                        Player::Black => 'x',
-                        Player::White => 'o'
+                        Color::Black => 'x',
+                        Color::White => 'o'
                     }
                 };
                 write!(f, " {} ", c)?;
@@ -293,13 +293,13 @@ impl fmt::Display for Board {
                 let c = match contents {
                     None => '.',
                     Some(color) => match color {
-                        Player::Black => 'x',
-                        Player::White => 'o'
+                        Color::Black => 'x',
+                        Color::White => 'o'
                     }
                 };
-                write!(f, "{}", c);
+                let _ = write!(f, "{}", c);
             }
-            write!(f, "\n");
+            let _ = write!(f, "\n");
         }
         Ok(())
     }
@@ -307,8 +307,7 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
-    use std::io::empty;
-    use crate::{Board, Point, Player};
+    use crate::{Board, Point, Color};
     use std::str::FromStr;
 
     #[test]
@@ -349,7 +348,7 @@ mod tests {
     fn test_placing_and_removing_stone_preserves_hash() {
         let mut board = Board::new(19);
         let original_hash = board.hash();
-        board.place_stone(Player::White, &Point::new(1, 1));
+        board.place_stone(Color::White, &Point::new(1, 1)).unwrap();
         assert_ne!(original_hash, board.hash(), "Placing stones changes the hash");
         board.remove_stone(&Point::new(1, 1));
         assert_eq!(original_hash, board.hash(), "Removing stone reverts the hash");
@@ -361,12 +360,12 @@ mod tests {
         let original_hash = board.hash();
 
         // Add multiple stones
-        let _ = board.place_stone(Player::White, &Point::new(1, 1));
-        let _ = board.place_stone(Player::White, &Point::new(2, 1));
-        let _ = board.place_stone(Player::White, &Point::new(3, 1));
-        let _ = board.place_stone(Player::Black, &Point::new(11, 1));
-        let _ = board.place_stone(Player::Black, &Point::new(12, 1));
-        let _ = board.place_stone(Player::Black, &Point::new(13, 1));
+        let _ = board.place_stone(Color::White, &Point::new(1, 1));
+        let _ = board.place_stone(Color::White, &Point::new(2, 1));
+        let _ = board.place_stone(Color::White, &Point::new(3, 1));
+        let _ = board.place_stone(Color::Black, &Point::new(11, 1));
+        let _ = board.place_stone(Color::Black, &Point::new(12, 1));
+        let _ = board.place_stone(Color::Black, &Point::new(13, 1));
 
         // Remove in shuffled order
         board.remove_stone(&Point::new(2, 1));
@@ -385,30 +384,30 @@ mod tests {
                              o.o
                              .o."#;
         let board = Board::from_str(board).unwrap();
-        assert!(!board.is_eye(&Point::new(1, 2), Player::White));
-        assert!(!board.is_eye(&Point::new(2, 2), Player::White));
-        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+        assert!(!board.is_eye(&Point::new(1, 2), Color::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Color::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Color::Black));
 
         let board = r#"ooo
                              o.o
                              .o."#;
         let board = Board::from_str(board).unwrap();
-        assert!(!board.is_eye(&Point::new(2, 2), Player::White));
-        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+        assert!(!board.is_eye(&Point::new(2, 2), Color::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Color::Black));
 
         let board = r#"ooo
                              o.o
                              .oo"#;
         let board = Board::from_str(board).unwrap();
-        assert!(board.is_eye(&Point::new(2, 2), Player::White));
-        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+        assert!(board.is_eye(&Point::new(2, 2), Color::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Color::Black));
 
         let board = r#"ooo
                              o.o
                              ooo"#;
         let board = Board::from_str(board).unwrap();
-        assert!(board.is_eye(&Point::new(2, 2), Player::White));
-        assert!(!board.is_eye(&Point::new(2, 2), Player::Black));
+        assert!(board.is_eye(&Point::new(2, 2), Color::White));
+        assert!(!board.is_eye(&Point::new(2, 2), Color::Black));
     }
 
     #[test]
@@ -417,36 +416,36 @@ mod tests {
                              ..x
                              ..."#;
         let board = Board::from_str(board).unwrap();
-        assert!(!board.is_eye(&Point::new(1, 3), Player::Black));
-        assert!(!board.is_eye(&Point::new(1, 3), Player::White));
+        assert!(!board.is_eye(&Point::new(1, 3), Color::Black));
+        assert!(!board.is_eye(&Point::new(1, 3), Color::White));
 
         let board = r#".x.
                              .xx
                              ..."#;
         let board = Board::from_str(board).unwrap();
-        assert!(board.is_eye(&Point::new(1, 3), Player::Black));
-        assert!(!board.is_eye(&Point::new(1, 3), Player::White));
+        assert!(board.is_eye(&Point::new(1, 3), Color::Black));
+        assert!(!board.is_eye(&Point::new(1, 3), Color::White));
 
         let board = r#"xx.
                              .x.
                              x.."#;
         let board = Board::from_str(board).unwrap();
-        assert!(!board.is_eye(&Point::new(2, 1), Player::Black));
-        assert!(!board.is_eye(&Point::new(2, 1), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 1), Color::Black));
+        assert!(!board.is_eye(&Point::new(2, 1), Color::White));
 
         let board = r#"xx.
                              .x.
                              xx."#;
         let board = Board::from_str(board).unwrap();
-        assert!(board.is_eye(&Point::new(2, 1), Player::Black));
-        assert!(!board.is_eye(&Point::new(2, 1), Player::White));
+        assert!(board.is_eye(&Point::new(2, 1), Color::Black));
+        assert!(!board.is_eye(&Point::new(2, 1), Color::White));
 
         let board = r#"xx.
                              .x.
                              xo."#;
         let board = Board::from_str(board).unwrap();
-        assert!(!board.is_eye(&Point::new(2, 1), Player::Black));
-        assert!(!board.is_eye(&Point::new(2, 1), Player::White));
+        assert!(!board.is_eye(&Point::new(2, 1), Color::Black));
+        assert!(!board.is_eye(&Point::new(2, 1), Color::White));
 
     }
 
