@@ -4,8 +4,8 @@ use std::str::FromStr;
 use std::fmt;
 use std::fmt::Formatter;
 
-use crate::types::*;
-use crate::zobrist::{ZobristHasher, ZobristHash};
+use crate::game::go::types::*;
+use crate::game::go::zobrist::{ZobristHasher, ZobristHash};
 
 #[derive(Clone, PartialEq)]
 pub struct Board {
@@ -155,6 +155,16 @@ impl Board {
 
     fn apply_hash_for_play(&mut self, player: Color, point: &Point) {
         self.hash = self.hasher.hash_move(self.hash, player, point);
+    }
+
+    pub fn number_of_stones_of_color(&self, the_color: Color) -> usize {
+        self.grid.iter().flatten().filter(|color| **color == the_color ).map(|_| 1).sum()
+    }
+
+    pub fn is_on_edge(&self, point: &Point) -> bool {
+        match point {
+            &Point { row, col } => row == 1 || col == 1 || row == self.rows || col == self.cols
+        }
     }
 }
 
@@ -307,7 +317,7 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Board, Point, Color};
+    use super::*;
     use std::str::FromStr;
 
     #[test]

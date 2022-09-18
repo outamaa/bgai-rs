@@ -1,4 +1,4 @@
-use crate::Color;
+use crate::game::go::types::Color;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Player {

@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use crate::{Color, Point};
+use crate::game::go::types::{Color, Point};
 use std::fmt;
 use std::fmt::Formatter;
 

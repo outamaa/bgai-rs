@@ -1,25 +1,34 @@
 use std::collections::HashMap;
+use std::io::{stdin, stdout, Write};
 use std::time::Duration;
-use rand::thread_rng;
 use bgai;
-use bgai::{Move, Color};
-use bgai::agent::{RandomBot, Agent};
+use bgai::game::go::{self, Move, Color, GoState};
+use bgai::agent::{RandomBot, Agent, MinimaxBot};
+use bgai::GameState;
 
 fn main() {
-    let mut game = bgai::GameState::new(19);
-    let mut bots: HashMap<Color, Box<dyn Agent>> = HashMap::new();
+    go_game()
+}
+
+fn go_game() {
+    let mut game = GoState::new(5);
+    let mut bots: HashMap<Color, Box<dyn Agent<GoState>>> = HashMap::new();
     bots.insert(Color::White, Box::new(RandomBot::new()));
-    bots.insert(Color::Black, Box::new(RandomBot::new()));
+    bots.insert(Color::Black, Box::new(MinimaxBot::new(5, go::stone_difference)));
 
     while !game.is_over() {
         std::thread::sleep(Duration::from_millis(100));
-        print!("{}[2J", 27 as char);
+        //print!("{}[2J", 27 as char);
         println!("{:?}", &game.board);
-        let bot_move = bots.get_mut(&game.next_player).unwrap().select_move(&game);
-        print_move(game.next_player, &bot_move);
-        game = game.apply_move(bot_move);
+        let mut s=String::new();
+        print!("Proceed? (press enter) ");
+        let _=stdout().flush();
+        stdin().read_line(&mut s).expect("Something went wrong");
+        let bot_move = bots.get_mut(&game.next_player.color).unwrap().select_move(&game);
+        print_move(game.next_player.color, &bot_move);
+        game = game.apply_move(&bot_move);
     }
-    print!("{}[2J", 27 as char);
+    // print!("{}[2J", 27 as char);
     println!("{:?}", &game.board);
     println!("Game over!");
 }
